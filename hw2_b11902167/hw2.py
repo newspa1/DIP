@@ -96,15 +96,48 @@ class Image:
         img_new[img_new >= threshold] = 255
         return img_new
 
-    def Laplacian_of_Gaussian(img):
-        img_new = img.copy()
-        kernel = np.array([[-2, 1, 2], [-1, 4, -1], [-2, 1, 2]]) / 8
-        for r in range(1, img_new.shape[0]-1):
-            for c in range(1, img_new.shape[1]-1):
-                sub_img = img_new[r-1:r+2, c-1:c+2]
-                img_new[r, c] = np.sum(sub_img * kernel)
+    def shift(img):
+        shift_value = np.min(img)
+        if shift_value < 0:
+            img += abs(shift_value)
+        return np.clip(img, 0, 255).astype(np.uint8)
 
-        return img_new        
+
+    def convolution(img, kernel):
+        img_new = np.zeros(img.shape, dtype=np.float64)
+        for r in range(1, img.shape[0]-1):
+            for c in range(1, img.shape[1]-1):
+                sub_img = img[r-1:r+2, c-1:c+2]
+                img_new[r, c] = np.sum(sub_img * kernel)
+        
+        return img_new
+
+    def Laplacian_of_Gaussian(img):
+        def check_edge(img_new, r, c):
+            directions = [(0, 1), (1, 0), (1, 1), (-1, 1)]
+            for dr, dc in directions:
+                if img_new[r+dr, c+dc] * img_new[r-dr, c-dc] < 0:
+                    return True
+            return False
+        
+        # Laplacian of Gaussian
+        img_new = img.copy()
+        kernel = np.array([[0, -1, 0], [-1, 4, -1], [0, -1, 0]]) / 4
+        img_new = Image.convolution(img_new, kernel)
+
+        # Zero-crossing
+        # img_new[np.abs(img_new) < 15] = 0
+
+        # # Edge detection
+        # edge_map = np.zeros(img_new.shape, dtype=np.uint8)
+        # for r in range(1, img_new.shape[0]-1):
+        #     for c in range(1, img_new.shape[1]-1):
+        #         if img_new[r, c] == 0 and check_edge(img_new, r, c):
+        #             edge_map[r, c] = 255
+        #         else:
+        #             edge_map[r, c] = 0
+
+        return img_new
 
 
 if __name__ == "__main__":
@@ -114,12 +147,14 @@ if __name__ == "__main__":
     
     # cv2.imwrite('result1.png', result1)
     # cv2.imwrite('result2.png', result2)
-    # plt.hist(result1.ravel(), 256, [0, 256])
+    # # plt.hist(result1.ravel(), 256, [0, 256])
 
     # result3 = Image.Canny(sample1, 10, 90)
     # cv2.imwrite('result3.png', result3)
 
     result4 = Image.Laplacian_of_Gaussian(sample1)
-    cv2.imwrite('result4.png', result4)
+    # plt.hist(sample1.ravel(), 256, [0, 256])
+    plt.hist(result4.ravel(), 256)
+    # cv2.imwrite('result4.png', result4)
 
     plt.show()
