@@ -29,46 +29,61 @@ class Image:
 
         return gradient_magnitude, gradient_orientation
 
-    def non_maximum_suppression(img, magnitude, orientation):
+    def non_maximum_suppression(img, orientation):
         for r in range(1, img.shape[0]-1):
             for c in range(1, img.shape[1]-1):
                 angle = orientation[r, c]
                 # print(orientation[r, c])
                 if angle < np.pi/8 or angle >= 7*np.pi/8:
-                    if magnitude[r, c] < magnitude[r, c-1] or magnitude[r, c] < magnitude[r, c+1]:
+                    if img[r, c] < img[r, c-1] or img[r, c] < img[r, c+1]:
                         img[r, c] = 0
                 elif angle >= np.pi/8 and angle < 3*np.pi/8:
-                    if magnitude[r, c] < magnitude[r-1, c+1] or magnitude[r, c] < magnitude[r+1, c-1]:
+                    if img[r, c] < img[r-1, c+1] or img[r, c] < img[r+1, c-1]:
                         img[r, c] = 0
                 elif angle >= 3*np.pi/8 and angle < 5*np.pi/8:
-                    if magnitude[r, c] < magnitude[r-1, c] or magnitude[r, c] < magnitude[r+1, c]:
+                    if img[r, c] < img[r-1, c] or img[r, c] < img[r+1, c]:
                         img[r, c] = 0
                 elif angle >= 5*np.pi/8 and angle < 7*np.pi/8:
-                    if magnitude[r, c] < magnitude[r-1, c-1] or magnitude[r, c] < magnitude[r+1, c+1]:
+                    if img[r, c] < img[r-1, c-1] or img[r, c] < img[r+1, c+1]:
                         img[r, c] = 0
         
         return img
 
+    def finding_connected(img):
+        img_new = img.copy()
+        stack = []
+
+        # DFS finding connected component
+        for r in range(1, img_new.shape[0]-1):
+            for c in range(1, img_new.shape[1]-1):
+                if img_new[r, c] == 255:
+                    stack.append((r, c))
+                    while stack:
+                        r, c = stack.pop()
+                        directions = [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
+                        for dr, dc in directions:
+                            if 0 < img_new[r+dr, c+dc] < 255:
+                                stack.append((r+dr, c+dc))
+                        img_new[r, c] = 255
+        
+        # Remove not connected component
+        img_new[img_new < 255] = 0
+        return img_new
+            
+
     def Canny(img, threshold1, threshold2):
         img_new = Image.denoise_Guassian(img, 5)
-        magnitude, orientation = Image.compute_manitude_and_orientation(img_new)
-        directions = [[0, 1], [1, 1], [1, 0], [1, -1]]
-        plt.hist(magnitude.ravel())
-        # Non-maximum suppression
-        img_new = Image.non_maximum_suppression(img_new, magnitude, orientation)
+        img_new, orientation = Image.compute_manitude_and_orientation(img_new)
+        
+        # # Non-maximum suppression
+        img_new = Image.non_maximum_suppression(img_new, orientation)
 
         # Hysteretic thresholding
-        # img_new[img_new < threshold1] = 0
-        # img_new[img_new >= threshold2] = 255
+        img_new[img_new < threshold1] = 0
+        img_new[img_new >= threshold2] = 255
 
         # Connected component labeling
-        # for r in range(1, img_new.shape[0]-1):
-        #     for c in range(1, img_new.shape[1]-1):
-        #         if img_new[r, c] != 0:
-        #             for direction in directions:
-        #                 if img_new[r+direction[0], c+direction[1]] == 255:
-        #                     img_new[r, c] = 255
-        #                     break
+        img_new = Image.finding_connected(img_new)
         
         return img_new
 
@@ -81,6 +96,17 @@ class Image:
         img_new[img_new >= threshold] = 255
         return img_new
 
+    def Laplacian_of_Gaussian(img):
+        img_new = img.copy()
+        kernel = np.array([[-2, 1, 2], [-1, 4, -1], [-2, 1, 2]]) / 8
+        for r in range(1, img_new.shape[0]-1):
+            for c in range(1, img_new.shape[1]-1):
+                sub_img = img_new[r-1:r+2, c-1:c+2]
+                img_new[r, c] = np.sum(sub_img * kernel)
+
+        return img_new        
+
+
 if __name__ == "__main__":
     sample1 = cv2.imread('hw2_sample_images/sample1.png', cv2.IMREAD_GRAYSCALE)
     # result1 = Image.Sobel(sample1)
@@ -90,8 +116,10 @@ if __name__ == "__main__":
     # cv2.imwrite('result2.png', result2)
     # plt.hist(result1.ravel(), 256, [0, 256])
 
-    result3 = Image.Canny(sample1, 90, 180)
-    cv2.imwrite('result3.png', result3)
+    # result3 = Image.Canny(sample1, 10, 90)
+    # cv2.imwrite('result3.png', result3)
 
+    result4 = Image.Laplacian_of_Gaussian(sample1)
+    cv2.imwrite('result4.png', result4)
 
     plt.show()
