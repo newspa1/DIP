@@ -340,7 +340,7 @@ class Image:
 
         return texture_vectors
         
-    def k_means(vectors_old, k, max_iter=50):
+    def k_means(vectors_old, k, max_iter=100):
         vectors = np.zeros((vectors_old.shape[1]*vectors_old.shape[2], vectors_old.shape[0]), dtype=int)
         for i in range(vectors_old.shape[0]):
             for r in range(vectors_old.shape[1]):
